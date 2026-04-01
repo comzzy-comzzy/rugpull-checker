@@ -2,26 +2,86 @@ import { useMemo, useState } from 'react'
 import './App.css'
 
 const CHAINS = [
-  { id: '1', label: 'Ethereum' },
-  { id: '56', label: 'BNB Chain' },
-  { id: '8453', label: 'Base' },
-  { id: '137', label: 'Polygon' },
-  { id: '42161', label: 'Arbitrum' },
+  { id: '1', label: 'Ethereum', short: 'ETH' },
+  { id: '56', label: 'BNB Chain', short: 'BNB' },
+  { id: '8453', label: 'Base', short: 'BASE' },
+  { id: '137', label: 'Polygon', short: 'POLY' },
+  { id: '42161', label: 'Arbitrum', short: 'ARB' },
 ]
 
 const FLAG_DEFINITIONS = [
-  { key: 'IS_OPEN_SOURCE', label: 'Open source', riskWhen: false },
-  { key: 'IS_PROXY', label: 'Proxy contract', riskWhen: true },
-  { key: 'IS_MINTABLE', label: 'Mintable', riskWhen: true },
-  { key: 'CAN_TAKE_BACK_OWNERSHIP', label: 'Can take back ownership', riskWhen: true },
-  { key: 'OWNER_CHANGE_BALANCE', label: 'Owner can change balance', riskWhen: true },
-  { key: 'HIDDEN_OWNER', label: 'Hidden owner', riskWhen: true },
-  { key: 'SELFDESTRUCT', label: 'Selfdestruct enabled', riskWhen: true },
-  { key: 'IS_HONEYPOT', label: 'Honeypot', riskWhen: true },
-  { key: 'TRANSFER_PAUSABLE', label: 'Transfers pausable', riskWhen: true },
-  { key: 'BUY_TAX', label: 'Buy tax > 10%', riskWhen: true },
-  { key: 'SELL_TAX', label: 'Sell tax > 10%', riskWhen: true },
-  { key: 'LP_LOCKED', label: 'LP locked', riskWhen: false },
+  {
+    key: 'IS_OPEN_SOURCE',
+    label: 'Open source',
+    riskWhen: false,
+    tooltip: 'If the contract is not open source, buyers cannot easily inspect the code for hidden risks.',
+  },
+  {
+    key: 'IS_PROXY',
+    label: 'Proxy contract',
+    riskWhen: true,
+    tooltip: 'Proxy contracts can be upgraded later, which may let the owner change behavior after launch.',
+  },
+  {
+    key: 'IS_MINTABLE',
+    label: 'Mintable',
+    riskWhen: true,
+    tooltip: 'Mintable tokens can create more supply, which may dilute holders or be abused by the team.',
+  },
+  {
+    key: 'CAN_TAKE_BACK_OWNERSHIP',
+    label: 'Can take back ownership',
+    riskWhen: true,
+    tooltip: 'This suggests ownership can be reclaimed even after renouncing, which is a centralization risk.',
+  },
+  {
+    key: 'OWNER_CHANGE_BALANCE',
+    label: 'Owner can change balance',
+    riskWhen: true,
+    tooltip: 'If true, the owner may be able to alter user balances directly.',
+  },
+  {
+    key: 'HIDDEN_OWNER',
+    label: 'Hidden owner',
+    riskWhen: true,
+    tooltip: 'A hidden owner means control may still exist even if the contract appears renounced.',
+  },
+  {
+    key: 'SELFDESTRUCT',
+    label: 'Selfdestruct enabled',
+    riskWhen: true,
+    tooltip: 'Selfdestruct can allow the contract to be disabled or destroyed, depending on implementation.',
+  },
+  {
+    key: 'IS_HONEYPOT',
+    label: 'Honeypot',
+    riskWhen: true,
+    tooltip: 'A honeypot lets users buy but blocks or punishes selling.',
+  },
+  {
+    key: 'TRANSFER_PAUSABLE',
+    label: 'Transfers pausable',
+    riskWhen: true,
+    tooltip: 'If transfers can be paused, the team may be able to freeze token movement.',
+  },
+  {
+    key: 'BUY_TAX',
+    label: 'Buy tax > 10%',
+    riskWhen: true,
+    tooltip: 'High buy tax can make entering the token expensive and may signal abusive tokenomics.',
+  },
+  {
+    key: 'SELL_TAX',
+    label: 'Sell tax > 10%',
+    riskWhen: true,
+    tooltip: 'High sell tax can trap users or heavily penalize exits.',
+  },
+  {
+    key: 'LP_LOCKED',
+    label: 'LP locked',
+    riskWhen: false,
+    tooltip: 'Locked liquidity generally reduces the chance of an immediate liquidity rug.',
+  },
 ]
 
 const EXAMPLES = [
@@ -145,6 +205,11 @@ function parseBoolean(value) {
   return false
 }
 
+function shortenAddress(value) {
+  if (!value || value === 'Unknown') return 'Unknown'
+  return `${value.slice(0, 6)}...${value.slice(-4)}`
+}
+
 function parseTaxRisk(value) {
   const numeric = Number(value)
   if (!Number.isFinite(numeric)) return false
@@ -182,8 +247,10 @@ function App() {
   const [walletError, setWalletError] = useState(false)
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)
+  const [copiedField, setCopiedField] = useState('')
 
   const badge = useMemo(() => (result ? getBadge(result.score) : null), [result])
+  const activeChain = useMemo(() => CHAINS.find((chain) => chain.id === result?.chainId), [result])
 
   const reset = () => {
     setForm(INITIAL_FORM)
@@ -205,6 +272,17 @@ function App() {
     if (field === 'address') {
       setError('')
       setWalletError(false)
+    }
+  }
+
+  const copyValue = async (label, value) => {
+    if (!value || value === 'Unknown') return
+    try {
+      await navigator.clipboard.writeText(value)
+      setCopiedField(label)
+      window.setTimeout(() => setCopiedField(''), 1600)
+    } catch {
+      setCopiedField('')
     }
   }
 
@@ -343,10 +421,19 @@ function App() {
           <section className="results-card fade-up">
             <div className="results-header">
               <div>
-                <p className="meta-label">Token</p>
+                <div className="result-topline">
+                  <p className="meta-label">Token</p>
+                  {activeChain ? <span className="chain-badge">{activeChain.short}</span> : null}
+                </div>
                 <h2>
                   {result.tokenName} <span>({result.symbol})</span>
                 </h2>
+                <div className="address-line">
+                  <span>Contract: {shortenAddress(result.address)}</span>
+                  <button type="button" className="copy-button" onClick={() => copyValue('contract', result.address)}>
+                    {copiedField === 'contract' ? 'Copied' : 'Copy'}
+                  </button>
+                </div>
               </div>
               <div className={`badge badge-${badge.tone}`}>{badge.label}</div>
             </div>
@@ -370,7 +457,12 @@ function App() {
               </div>
               <div className="stat-item wide">
                 <span>Creator address</span>
-                <strong>{result.creatorAddress}</strong>
+                <div className="address-row">
+                  <strong>{result.creatorAddress}</strong>
+                  <button type="button" className="copy-button" onClick={() => copyValue('creator', result.creatorAddress)}>
+                    {copiedField === 'creator' ? 'Copied' : 'Copy'}
+                  </button>
+                </div>
               </div>
               <div className="stat-item">
                 <span>Risk score</span>
@@ -391,8 +483,11 @@ function App() {
                 const value = result.flags[flag.key]
                 const risky = value === flag.riskWhen
                 return (
-                  <div key={flag.key} className="flag-card">
-                    <span>{flag.label}</span>
+                  <div key={flag.key} className="flag-card" title={flag.tooltip}>
+                    <div className="flag-title-row">
+                      <span>{flag.label}</span>
+                      <span className="flag-info" aria-hidden="true">?</span>
+                    </div>
                     <strong className={risky ? 'flag-risk' : 'flag-safe'}>{value ? 'YES' : 'NO'}</strong>
                   </div>
                 )
