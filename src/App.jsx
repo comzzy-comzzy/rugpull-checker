@@ -327,11 +327,8 @@ function App() {
 
         {walletError ? (
           <section className="status-card wallet-error shake">
-            <h2>That looks like a personal wallet, not a token contract.</h2>
-            <p>
-              No token security record came back for this address. Try a real token contract instead, or tap one of the
-              examples below.
-            </p>
+            <h2>This is not a contract address.</h2>
+            <p>Please make sure you are inputing a contract address.</p>
             <div className="example-row centered">
               {EXAMPLES.map((example) => (
                 <button key={example.label} type="button" className="example-chip" onClick={() => fillExample(example)}>
@@ -378,6 +375,14 @@ function App() {
               <div className="stat-item">
                 <span>Risk score</span>
                 <strong>{result.score}/100</strong>
+              </div>
+              <div className="stat-item">
+                <span>Unsafe</span>
+                <strong>{result.score}%</strong>
+              </div>
+              <div className="stat-item">
+                <span>Safe</span>
+                <strong>{100 - result.score}%</strong>
               </div>
             </div>
 
