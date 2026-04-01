@@ -377,12 +377,12 @@ function App() {
                 <strong>{result.score}/100</strong>
               </div>
               <div className="stat-item">
-                <span>Unsafe</span>
-                <strong>{result.score}%</strong>
+                <span>Risk level</span>
+                <strong>{result.score}% risky</strong>
               </div>
               <div className="stat-item">
-                <span>Safe</span>
-                <strong>{100 - result.score}%</strong>
+                <span>Safety score</span>
+                <strong>{100 - result.score}% safe</strong>
               </div>
             </div>
 
