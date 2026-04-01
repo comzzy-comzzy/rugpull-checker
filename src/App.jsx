@@ -317,12 +317,28 @@ function App() {
         return
       }
 
-      const targetUrl = encodeURIComponent(
-        `https://api.gopluslabs.io/api/v1/token_security/${form.chainId}?contract_addresses=${address}`,
-      )
-      const response = await fetch(`https://api.allorigins.win/get?url=${targetUrl}`)
-      const payload = await response.json()
-      const parsed = JSON.parse(payload.contents)
+      const apiUrl = `https://api.gopluslabs.io/api/v1/token_security/${form.chainId}?contract_addresses=${address}`
+
+      let parsed = null
+      let lastError = null
+
+      try {
+        const directResponse = await fetch(apiUrl)
+        if (!directResponse.ok) {
+          throw new Error(`Direct GoPlus request failed with ${directResponse.status}`)
+        }
+        parsed = await directResponse.json()
+      } catch (directError) {
+        lastError = directError
+        const targetUrl = encodeURIComponent(apiUrl)
+        const proxyResponse = await fetch(`https://api.allorigins.win/get?url=${targetUrl}`)
+        if (!proxyResponse.ok) {
+          throw new Error(`Proxy request failed with ${proxyResponse.status}`)
+        }
+        const payload = await proxyResponse.json()
+        parsed = JSON.parse(payload.contents)
+      }
+
       const tokenData = parsed?.result?.[address.toLowerCase()] || parsed?.result?.[address]
 
       if (!tokenData || !tokenData.token_name) {
@@ -335,6 +351,7 @@ function App() {
       setResult({ ...mapped, address, chainId: form.chainId, score })
     } catch (fetchError) {
       setError('Could not fetch security data right now. Try again in a moment.')
+      console.error('Token check failed:', fetchError)
     } finally {
       setLoading(false)
     }
